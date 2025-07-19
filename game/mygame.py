@@ -21,7 +21,7 @@ class Game:
         while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    running = False
+                    self.running = False
             
             # process keys if needed?
             # keys = pygame.key.get_pressed()
