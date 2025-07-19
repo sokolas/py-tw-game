@@ -96,33 +96,39 @@ class Twitch:
         try:
             while True:
                 response = await self.ws.recv()
-                data = json.loads(response)
-                metadata = data.get("metadata", {})
-                message_type = metadata.get("message_type")
-
-                if message_type != "session_keepalive": # don't care, just means we're still online
-                    # print(f"eventsub: {response}")
-                    pass
-                
-                if message_type == "session_welcome": # first message we receive from twitch, prompting us to subscribe to one or more notifications
-                    self.es_session_id = data["payload"]["session"]["id"]
-                    self.loop.create_task(self.subscribe_eventsub_chat())
-                elif message_type == "notification": # actual event data
-                    event = data["payload"]["event"]
-                    # ignore self-messages (use a bot account!)
-                    if self.user_id != event["chatter_user_id"]:
-                        # this is where we decouple twitch message handling from actual "business logic"
-                        if self.chat_handler:
-                            self.loop.create_task(self.chat_handler(event))
+                await self.process_ws_message(response)
         except ConnectionClosedOK:
             print("Connection closed normally.")
         except ConnectionClosedError as e:
             print(f"Connection closed with error: {e}")
-        except Exception as e:
-            print(f"Unexpected error while receiving: {e}")
         self.ws = None
         # if we reached this point, the websocket is no longer connected
         # TODO reconnect on error (schedule a new task with connect_eventsub())
+
+    # parse json, do some logic based on the message type
+    # wrapped in a try/except to avoid the handler breaking websocket recv loop
+    async def process_ws_message(self, response):
+        try:
+            data = json.loads(response)
+            metadata = data.get("metadata", {})
+            message_type = metadata.get("message_type")
+
+            if message_type != "session_keepalive": # don't care, just means we're still online
+                # print(f"eventsub: {response}")
+                pass
+                
+            if message_type == "session_welcome": # first message we receive from twitch, prompting us to subscribe to one or more notifications
+                self.es_session_id = data["payload"]["session"]["id"]
+                self.loop.create_task(self.subscribe_eventsub_chat())
+            elif message_type == "notification": # actual event data
+                event = data["payload"]["event"]
+                # ignore self-messages (use a bot account!)
+                if self.user_id != event["chatter_user_id"]:
+                    # this is where we decouple twitch message handling from actual "business logic"
+                    if self.chat_handler:
+                        self.loop.create_task(self.chat_handler(event))
+        except Exception as e:
+            print(f"Unexpected error while processing websocket message {data}: {e}")
 
     # this is called when the server has received a token from the browser (user has authorized the app)
     async def do_auth(self, token):
@@ -161,6 +167,14 @@ class Twitch:
         }
         async with aiohttp.ClientSession() as session:
             sub_response = await self.post_data(session, "https://api.twitch.tv/helix/eventsub/subscriptions", data = req)
-            # await self.send_message("ready")
+            data = sub_response.get("data", [])
+            if len(data) > 0:
+                subscription = data[0]
+                sub_type = subscription.get("type", "")
+                status = subscription.get("status", "")
+                print(f"Subscribed to eventsub: {sub_type} {status}")
+                # await self.send_message("ready")
+            else:
+                print(f"No data from eventsub subscription, something went wrong: {sub_response}")
             
         
