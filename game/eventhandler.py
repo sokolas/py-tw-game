@@ -20,3 +20,4 @@ class EventHandler:
     async def handle_web_event(self, event):
         if event == "exit":
             self.game.running = False
+    

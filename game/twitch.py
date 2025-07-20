@@ -1,5 +1,4 @@
 import aiohttp
-import os
 import urllib.parse
 import websockets
 import json

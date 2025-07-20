@@ -1,5 +1,5 @@
 pygame
-fastapi
+starlette
 websockets
 uvicorn
 aiohttp

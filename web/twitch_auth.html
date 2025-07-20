@@ -12,8 +12,9 @@
         else if (d && d.error) { document.getElementsByTagName('h2')[0].textContent = 'Error: ' + d.error_description.replaceAll('+',' '); document.getElementsByTagName('p')[0].textContent = 'please try again' }
         else { document.getElementsByTagName('h2')[0].textContent = 'Something went wrong'; document.getElementsByTagName('p')[0].textContent = 'please try again' }
     } else {
-        window.location.href = location.href.replace("#", "?");
-        let d = {};
+        if (window.location.href.includes("#")) {
+            window.location.href = location.href.replace("#", "?");
+        }
     }
 </script>
 </body>
